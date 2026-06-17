@@ -1,0 +1,4 @@
+id_solicitud,legajo_empleado,fecha_inicio,cantidad_dias,fecha_solicitud,estado
+S001,E001,2025-02-03,5,2025-01-20,aprobada
+S002,E002,2025-03-10,7,2025-02-28,rechazada
+S003,E003,2025-04-07,3,2025-03-25,aprobada
