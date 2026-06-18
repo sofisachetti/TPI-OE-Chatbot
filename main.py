@@ -128,7 +128,7 @@ def simular_decision_jefe(nombre_jefe):
         time.sleep(0.6)
         print(".", end="", flush=True)
     print()
-    decision = random.choice(["aprobada", "rechazada"])
+    decision = random.choice(["aprobada", "rechazada", "pendiente"])
     return decision
 
 
@@ -139,7 +139,7 @@ def simular_decision_jefe(nombre_jefe):
 def solicitar_vacaciones(empleado, empleados, solicitudes):
     # Se empieza verificando si el empleado tiene días disponibles. Si no los tiene, avisa.
     if int(empleado["saldo_dias"]) == 0:
-        bot("REvisé tu saldo y lamentablemente no te quedan días disponibles para este año. ¿Puedo ayudarte con algo más?")
+        bot("Revisé tu saldo y lamentablemente no te quedan días disponibles para este año. ¿Puedo ayudarte con algo más?")
         return empleados, solicitudes
 
     # Si tiene dias disponibles, muestra la cantidad en un mensaje
@@ -199,14 +199,16 @@ def solicitar_vacaciones(empleado, empleados, solicitudes):
     
     # Si la decision fue aprobada, se actualiza el saldo de días
     if decision == "aprobada":
+        saldo_restante = int(empleado["saldo_dias"]) - cantidad_dias
         for emp in empleados:
             if emp["legajo"] == empleado["legajo"]:  # Busco al empleado en los datos y actualizo la cantida de dias
-                emp["saldo_dias"] = str(int(emp["saldo_dias"]) - cantidad_dias)
+                emp["saldo_dias"] = str(saldo_restante)
                 break
+        
         # Reescribe el CSV y lo guarda
         encabezado_emp = ["legajo", "nombre", "apellido", "departamento", "jefe_legajo", "saldo_dias"]
         escribir_csv(ARCHIVO_EMPLEADOS, empleados, encabezado_emp)
-        saldo_restante = int(empleado["saldo_dias"]) - cantidad_dias
+        
         bot(f"¡Buenas noticias! {nombre_jefe} aprobó tu solicitud ✓") # El bot avisa que la solicitud fue aprobada
         bot(f"Tus vacaciones quedaron registradas: {cantidad_dias} días a partir del {fecha_inicio}. Te quedan {saldo_restante} días disponibles. (ID solicitud: {nuevo_id})")
     elif decision == "rechazada":  # Si fueron rechazadas manda mensaje
@@ -240,7 +242,7 @@ def ver_solicitudes(empleado, solicitudes):
 
 def menu():
     print("\n" + "-" * 45)
-    print("  TechSoluciones - Asistente de RRHH")
+    print("  TechSoluctions - Asistente de RRHH")
     print("-" * 45)
 
     # Lee los archivos CSV
@@ -253,7 +255,7 @@ def menu():
         return
 
     # Identificación del empleado
-    bot("¡Hola! Soy el asistente de RRHH de TechSoluciones. Para empezar, ¿me decís tu número de legajo?")
+    bot("¡Hola! Soy el asistente de RRHH de TechSolutions. Para empezar, ¿me decís tu número de legajo?")
     empleado = None
     intentos = 0
     while empleado is None:
