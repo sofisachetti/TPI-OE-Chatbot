@@ -12,7 +12,7 @@ from datetime import datetime
 # Generamos variables para manejar las rutas a los archivos CSV
 # Tambiénuna variable donde alamcenamos el valor inicial de vacaciones
 ARCHIVO_EMPLEADOS = 'empleados.csv'
-ARCHIVO_SOLICITUDES = 'solcitudes.csv'
+ARCHIVO_SOLICITUDES = 'solicitudes.csv'
 SALDO_INICIAL = 14
 
 
@@ -132,3 +132,177 @@ def simular_decision_jefe(nombre_jefe):
     return decision
 
 
+# Funciones de proceso: van a simular todo el flujo de la conversación
+# solicitar_vacaciones() -> es la función principal. En esta función se da la mayoría de la conversación y el pedido de vacaciones.
+# ver_solicitudes() -> función para ver las solicitudes que tiene registradas el empleado
+
+def solicitar_vacaciones(empleado, empleados, solicitudes):
+    # Se empieza verificando si el empleado tiene días disponibles. Si no los tiene, avisa.
+    if int(empleado["saldo_dias"]) == 0:
+        bot("REvisé tu saldo y lamentablemente no te quedan días disponibles para este año. ¿Puedo ayudarte con algo más?")
+        return empleados, solicitudes
+
+    # Si tiene dias disponibles, muestra la cantidad en un mensaje
+    bot(f"Perfecto! Tenés {empleado['saldo_dias']} días disponibles.\n¿Desde qué fecha querés empezar las vacaciones? Ingresalo en el formato AAAA-MM-DD.")
+    
+    #Bloque para pedir la fecha y verificarla
+    fecha_inicio = None
+    while fecha_inicio is None:
+        texto = usuario("Fecha de inciio: ")
+        if texto == "":
+            bot("Necesito que me indiques una fecha para continuar.\n¿Desde cuando querés tomar las vacaciones?")
+            continue
+        fecha_inicio = validar_fecha(texto)
+        if fecha_inicio is None:
+            bot("Esa fecha no es válida. \nRecordá que tiene que estar en formato AAAA-MM-DD y ser una fecha futura. Intentemos de nuevo.")
+    bot(f"Anotado el día {fecha_inicio}. ¿Cuántos días necesitas tomar?")
+    
+    # Bloque para pedir cantidad de días y verificarlos
+    cantidad_dias = None
+    while cantidad_dias is None:
+        texto = usuario("Cantidad de días: ")
+        try:
+            dias = int(texto)
+            if dias <= 0:  # Verifica que los días sean numeor postivio
+                bot("La cantidad de días tiene que ser al menos 1. ¿Cuántos días querés?")
+            elif dias > int(empleado["saldo_dias"]):  # Verifica que la cant de dias pedidos no sobrepase los dias disponibles
+                bot(f"Ese número supera tu saldo disponible({empleado['saldo_dias']} días). ¿querés pedir una cantidad menor?")
+            else:
+                cantidad_dias = dias
+        except ValueError:
+            bot("No entendí eso. Por favor, ingresá sólo el número de días. Por ejemplo: 5.")
+    
+    # Bloque para buscar el jefe a cargo del área donde está el empleado
+    jefe = buscar_empleado(empleado["jefe_legajo"], empleados)
+    nombre_jefe = jefe["nombre"] + " " + jefe["apellido"] if jefe else "El responsable de RRHH"
+    
+    # Simulacion de la decision del jefe
+    decision = simular_decision_jefe(nombre_jefe)
+    
+    # Generar y registrar solicitud en el formato adecuado
+    nuevo_id = generar_id_solicitud(solicitudes)
+    fecha_hoy = datetime.today().strftime("%Y-%m-%d")
+    
+    nueva_solicitud = {  # Formateo el cuerpo de la soli
+        "id_solictud": nuevo_id,
+        "legajo_empleado": empleado["legajo"],
+        "fecha_inicio": fecha_inicio,
+        "cantidad_dias": str(cantidad_dias),
+        "fecha_solicitud": fecha_hoy,
+        "estado": decision
+    }
+    solicitudes.append(nueva_solicitud)  # Agrego a la lista de solicitudes
+    
+    # Guardo en el archivo CSV
+    encabezado_sol = ["id_solicitud", "legajo_empleado", "fecha_inicio", "cantidad_dias", "fecha_solicitud", "estado"]
+    escribir_csv(ARCHIVO_SOLICITUDES, solicitudes, encabezado_sol)
+    
+    # Si la decision fue aprobada, se actualiza el saldo de días
+    if decision == "aprobada":
+        for emp in empleados:
+            if emp["legajo"] == empleado["legajo"]:  # Busco al empleado en los datos y actualizo la cantida de dias
+                emp["saldo_dias"] = str(int(emp["saldo_dias"]) - cantidad_dias)
+                break
+        # Reescribe el CSV y lo guarda
+        encabezado_emp = ["legajo", "nombre", "apellido", "departamento", "jefe_legajo", "saldo_dias"]
+        escribir_csv(ARCHIVO_EMPLEADOS, empleados, encabezado_emp)
+        saldo_restante = int(empleado["saldo_dias"]) - cantidad_dias
+        bot(f"¡Buenas noticias! {nombre_jefe} aprobó tu solicitud ✓") # El bot avisa que la solicitud fue aprobada
+        bot(f"Tus vacaciones quedaron registradas: {cantidad_dias} días a partir del {fecha_inicio}. Te quedan {saldo_restante} días disponibles. (ID solicitud: {nuevo_id})")
+    elif decision == "rechazada":  # Si fueron rechazadas manda mensaje
+        bot(f"Lamentablemente {nombre_jefe} rechazó la solicitud esta vez. Tu saldo de días no fue modificado. Si querés, podés intentar con otras fechas.")
+    else:
+        bot(f"La solicitud está penndiente. {nombre_jefe} la está evaluando a la brevedad.\nPpdés ir consultando el estado de la solictud cuando quieras por este medio.")
+    return empleados, solicitudes
+
+
+def ver_solicitudes(empleado, solicitudes):
+    # Se busca en la base de datos si el empleado tiene solicitudes registradas
+    mis_solicitudes = buscar_solicitudes_empleado(empleado["legajo"], solicitudes)
+
+    if len(mis_solicitudes) == 0:   # Si no hay solitudes, lo avisa
+        bot("Todavía no tenés ninguna solicitud registrada. ¿Querés hacer una ahora?")
+        return
+
+    # Si hay solicitudes, las imprime en pantalla 
+    # 
+    bot(f"Encontré {len(mis_solicitudes)} solicitud/es tuya/s:")
+    for sol in mis_solicitudes:
+        estado = sol["estado"].upper()
+        print(f"\n 📋 {sol['id_solicitud']} — {estado}")
+        print(f" Inicio    : {sol['fecha_inicio']}")
+        print(f" Días      : {sol['cantidad_dias']}")
+        print(f" Solicitado: {sol['fecha_solicitud']}")
+
+
+# Funcion principal
+# menu() -> va a manejar el flujo del chat
+
+def menu():
+    print("\n" + "-" * 45)
+    print("  TechSoluciones - Asistente de RRHH")
+    print("-" * 45)
+
+    # Lee los archivos CSV
+    empleados = leer_csv(ARCHIVO_EMPLEADOS)
+    solicitudes = leer_csv(ARCHIVO_SOLICITUDES)
+
+    # Si no hay empleados muestra un aviso 
+    if len(empleados) == 0:
+        bot("Hubo un problema al cargar los datos. Verificá que los archivos CSV estén en la misma carpeta.")
+        return
+
+    # Identificación del empleado
+    bot("¡Hola! Soy el asistente de RRHH de TechSoluciones. Para empezar, ¿me decís tu número de legajo?")
+    empleado = None
+    intentos = 0
+    while empleado is None:
+        if intentos >= 3:
+            bot("Demasiados intentos fallidos. Por seguridad, voy a cerrar la sesión. Comunicate con RRHH si necesitás ayuda.")
+            return
+        legajo = usuario("Legajo: ").upper()
+        empleado = buscar_empleado(legajo, empleados)
+        if empleado is None:
+            intentos += 1
+            restantes = 3 - intentos
+            bot(f"No encontré ese legajo. Verificá el número e intentá de nuevo. ({restantes} intento/s restante/s)")
+
+    bot(f"¡Bienvenido/a, {empleado['nombre']}! ¿En qué puedo ayudarte hoy?")
+    bot("Podés escribir: \"vacaciones\", \"mis solicitudes\", \"saldo\" o \"salir\"")
+
+    # Conversación principal
+    continuar = True
+    while continuar:
+        respuesta = usuario("").lower()
+
+        if "vacacion" in respuesta:
+            empleados_actualizados = leer_csv(ARCHIVO_EMPLEADOS)
+            solicitudes_actualizadas = leer_csv(ARCHIVO_SOLICITUDES)
+            for emp in empleados_actualizados:
+                if emp["legajo"] == empleado["legajo"]:
+                    empleado = emp
+                    break
+            empleados, solicitudes = solicitar_vacaciones(
+                empleado, empleados_actualizados, solicitudes_actualizadas
+            )
+            bot("¿Hay algo más en lo que pueda ayudarte? (\"mis solicitudes\", \"saldo\" o \"salir\")")
+
+        elif "solicitud" in respuesta or "historial" in respuesta:
+            solicitudes = leer_csv(ARCHIVO_SOLICITUDES)
+            ver_solicitudes(empleado, solicitudes)
+            bot("¿Necesitás algo más?")
+
+        elif "saldo" in respuesta or "días" in respuesta or "dias" in respuesta:
+            empleado_actualizado = buscar_empleado(empleado["legajo"], leer_csv(ARCHIVO_EMPLEADOS))
+            bot(f"Tu saldo actual es de {empleado_actualizado['saldo_dias']} días disponibles.")
+            bot("¿Puedo ayudarte con algo más?")
+
+        elif "salir" in respuesta or "chau" in respuesta or "exit" in respuesta:
+            bot(f"¡Hasta luego, {empleado['nombre']}! Que tengas un buen día. 👋")
+            continuar = False
+
+        else:
+            bot("No entendí bien eso. Podés escribir: \"vacaciones\", \"mis solicitudes\", \"saldo\" o \"salir\".")
+
+
+menu()
