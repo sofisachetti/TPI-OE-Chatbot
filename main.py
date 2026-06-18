@@ -111,10 +111,11 @@ def validar_fecha(texto):
         None
 
 
-def generar_id_solicitud(solcitudes):
-    if len(solcitudes) == 0:  # Si no hay ninguna solicitud almacenada, arranca con la primera
+def generar_id_solicitud(solicitudes):
+    validas = [s for s in solicitudes if s.get("id_solicitud", "").startswith("S")]
+    if len(validas) == 0:  # Si no hay ninguna solicitud almacenada, arranca con la primera
         return "S001"
-    ultima = solcitudes[-1]["id_solicitud"] # Toma la ultima solicitud registrada
+    ultima = validas[-1]["id_solicitud"] # Toma la ultima solicitud registrada
     numero = int(ultima[1:]) + 1  # Le saca la letra S y obtiene solamente el ultimo numeor y le suma 1
     return "S" + str(numero).zfill(3)  # Retorna la nueva id formateada
 
@@ -214,7 +215,7 @@ def solicitar_vacaciones(empleado, empleados, solicitudes):
     elif decision == "rechazada":  # Si fueron rechazadas manda mensaje
         bot(f"Lamentablemente {nombre_jefe} rechazó la solicitud esta vez. Tu saldo de días no fue modificado. Si querés, podés intentar con otras fechas.")
     else:
-        bot(f"La solicitud está penndiente. {nombre_jefe} la está evaluando a la brevedad.\nPpdés ir consultando el estado de la solictud cuando quieras por este medio.")
+        bot(f"La solicitud está pendiente. {nombre_jefe} la estará evaluando a la brevedad.\nPodés ir consultando el estado de la solictud cuando quieras por este medio.")
     return empleados, solicitudes
 
 
@@ -242,7 +243,7 @@ def ver_solicitudes(empleado, solicitudes):
 
 def menu():
     print("\n" + "-" * 45)
-    print("  TechSoluctions - Asistente de RRHH")
+    print("  TechSolutions - Asistente de RRHH")
     print("-" * 45)
 
     # Lee los archivos CSV
