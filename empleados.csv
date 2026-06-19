@@ -1,7 +1,7 @@
 legajo,nombre,apellido,departamento,jefe_legajo,saldo_dias
 E001,Lucas,Fernández,Desarrollo,E005,4
-E002,Valentina,Gómez,Desarrollo,E005,14
+E002,Valentina,Gómez,Desarrollo,E005,9
 E003,Martín,Herrera,QA,E005,14
 E004,Sofía,Ramírez,Soporte,E005,14
 E005,Andrea,Torres,RRHH,,14
-E006,Florencia,Lopez,Desarollo,0
+E006,Florencia,Lopez,Desarollo,0,
