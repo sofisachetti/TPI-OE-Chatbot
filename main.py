@@ -53,7 +53,7 @@ def leer_csv(nombre_archivo):
         registro = {}
         for i in range(len(encabezado)):
             if i < len(valores):
-                registro[encabezado[i]] = valores[i]
+                registro[encabezado[i]] = valores[i].strip()
             else:
                 registro[encabezado[i]] = ""
         registros.append(registro)
@@ -139,8 +139,8 @@ def simular_decision_jefe(nombre_jefe):
 
 def solicitar_vacaciones(empleado, empleados, solicitudes):
     # Se empieza verificando si el empleado tiene días disponibles. Si no los tiene, avisa.
-    if int(empleado["saldo_dias"]) == 0:
-        bot("Revisé tu saldo y lamentablemente no te quedan días disponibles para este año. ¿Puedo ayudarte con algo más?")
+    if int(empleado["saldo_dias"].strip() or "0") == 0:
+        bot("Revisé tu saldo y lamentablemente no te quedan días disponibles para este año.")
         return empleados, solicitudes
 
     # Si tiene dias disponibles, muestra la cantidad en un mensaje
